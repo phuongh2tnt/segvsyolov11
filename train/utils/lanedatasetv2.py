@@ -35,12 +35,10 @@ class LaneDataset(Dataset):
 
     def __getitem__(self, index):
         filename = self.filenames[index]
-        self.subset = subset
-        if subset in ['test', 'valid']:
-            img = Image.open(os.path.join('segatten/train/dataset', '{subset}/images', 'DSC_' + filename + '.JPG')).convert('RGB')
-            gt = Image.open(os.path.join('segatten/train/dataset', '{subset}/groundtruth', 'DSC_' + filename + '.png'))
-            img = self.resize_img(img)
-            gt = self.resize_gt(gt)
-            img = T.ToTensor()(img)
-            gt = torch.from_numpy(np.asarray(gt))
-            return img, gt
+        img = Image.open(os.path.join(self.data_path, 'images', 'DSC_' + filename + '.JPG')).convert('RGB')
+        gt = Image.open(os.path.join(self.data_path, 'groundtruth', 'DSC_' + filename + '.png'))
+        img = self.resize_img(img)
+        gt = self.resize_gt(gt)
+        img = T.ToTensor()(img)
+        gt = torch.from_numpy(np.asarray(gt))
+        return img, gt
