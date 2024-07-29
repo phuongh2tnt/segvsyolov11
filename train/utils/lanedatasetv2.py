@@ -7,7 +7,7 @@ import torch
 import os
 
 class LaneDataset(Dataset):
-    def __init__(self, dataset_dir='segmentattention/train/dataset', subset='train', img_size=480):
+    def __init__(self, dataset_dir='segatten/train/dataset', subset='train', img_size=480):
         """
         :param dataset_dir: directory containing the dataset
         :param subset: subset that we are working on ('train'/'valid'/'test')
