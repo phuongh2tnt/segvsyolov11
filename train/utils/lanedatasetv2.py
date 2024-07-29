@@ -21,7 +21,7 @@ class LaneDataset(Dataset):
         
         if subset in ['test', 'valid']:
             self.data_path = os.path.join(dataset_dir, subset)
-            text_file = os.path.join('segatten/train/dataset', f"{subset}.txt")
+            text_file = os.path.join('segatten/train/dataset', f"{subset}/{subset}.txt")
         else:
             self.data_path = 'segatten/test'
             text_file = 'ssegatten/test/test.txt'
