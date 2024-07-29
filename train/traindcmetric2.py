@@ -88,8 +88,8 @@ def validate_model():
     return valid_loss / len(valid_loader), val_metrics
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train a deep model for iris segmentation')
-    parser.add_argument('-d', '--dataset', default='dataset', type=str, help='Dataset folder')
+    parser = argparse.ArgumentParser(description='Train a deep model for shrimp segmentation')
+    parser.add_argument('-d', '--dataset', default='segatten/train/dataset', type=str, help='Dataset folder')
     parser.add_argument('-e', '--epochs', default=100, type=int, help='Number of epochs')
     parser.add_argument('-b', '--batch-size', default=4, type=int, help='Batch size')  # Adjusted batch size
     parser.add_argument('-i', '--img-size', default=480, type=int, help='Image size')
