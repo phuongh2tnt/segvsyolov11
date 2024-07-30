@@ -9,9 +9,8 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from utils.metric2 import accuracy, iou, f1, precision, recall 
 from torch.amp import GradScaler, autocast
-#chay tot
 # Import your UNet class
-from cbamunet import UNet  # 
+from cbamunet import UNet  
 
 # Setup CUDA
 def setup_cuda():
@@ -47,12 +46,14 @@ def train_model(accumulation_steps=2):
         
         train_loss += loss.item() * accumulation_steps
         seg_maps = logits.cpu().detach().numpy().argmax(axis=1)
+        prediction = logits.argmax(axis=1).cpu().numpy()
         gt = gt.cpu().detach().numpy()
         train_metrics['iou'] += iou(prediction, gt)
         train_metrics['accuracy'] += accuracy(prediction, gt)
         train_metrics['precision'] += precision(prediction, gt)
         train_metrics['recall'] += recall(prediction, gt)
         train_metrics['f1'] += f1(prediction, gt)
+
     for key in train_metrics:
         train_metrics[key] /= len(train_loader)
 
@@ -62,14 +63,7 @@ def validate_model():
     model.eval()
     valid_loss = 0.0
     val_metrics = {'iou': 0, 'accuracy': 0, 'precision': 0, 'recall': 0, 'f1': 0}
-    metric_func = {
-        'iou': iou,
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1
-    }
-    selected_metric = metric_func.get(cmd_args.metric, iou)
+    
     with torch.no_grad():
         for i, (img, gt) in enumerate(valid_loader):
             img, gt = img.to(device, dtype=torch.float), gt.to(device, dtype=torch.long)
@@ -80,6 +74,7 @@ def validate_model():
             
             valid_loss += loss.item()
             seg_maps = logits.cpu().detach().numpy().argmax(axis=1)
+            prediction = logits.argmax(axis=1).cpu().numpy()
             gt = gt.cpu().detach().numpy()
             val_metrics['iou'] += iou(prediction, gt)
             val_metrics['accuracy'] += accuracy(prediction, gt)
@@ -90,20 +85,20 @@ def validate_model():
     for key in val_metrics:
         val_metrics[key] /= len(valid_loader)
 
+
     return valid_loss / len(valid_loader), val_metrics
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a deep model for shrimp segmentation')
     parser.add_argument('-d', '--dataset', default="E:/thanh/ntu_group/phuong/segatten/train/dataset", type=str, help='Dataset folder')
     parser.add_argument('-e', '--epochs', default=100, type=int, help='Number of epochs')
-    parser.add_argument('-b', '--batch-size', default=4, type=int, help='Batch size')  # Adjusted batch size
+    parser.add_argument('-b', '--batch-size', default=4, type=int, help='Batch size')
     parser.add_argument('-i', '--img-size', default=480, type=int, help='Image size')
-    parser.add_argument('-c', '--checkpoint', default='segatten/train/checkpoints', type=str, help='Checkpoint folder')
+    parser.add_argument('-c', '--checkpoint', default='checkpoints', type=str, help='Checkpoint folder')
     parser.add_argument('-t', '--metric', default='iou', type=str, help='Metric for optimization')
 
     cmd_args = parser.parse_args()
     device = setup_cuda()
-
 
     from utils.lanedatasetv2 import LaneDataset
 
@@ -120,8 +115,8 @@ if __name__ == "__main__":
                                                num_workers=6)
 
     model = UNet(
-        in_channels=3,  # số kênh đầu vào (RGB)
-        out_channels=2  # số lớp đầu ra (2 cho phân loại nhị phân)
+        in_channels=3,  
+        out_channels=2  
     ).to(device)
 
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -135,10 +130,12 @@ if __name__ == "__main__":
 
         val_loss, val_metrics = validate_model()
 
-        print('Epoch: {} \tTraining {}: {:.4f} \tValid {}: {:.4f}'.format(epoch, cmd_args.metric, train_perf,
-                                                                          cmd_args.metric, valid_perf))
+        train_perf = train_metrics[cmd_args.metric]
+        valid_perf = val_metrics[cmd_args.metric]
+        
+        print(f'Epoch: {epoch} \tTraining {cmd_args.metric}: {train_perf:.4f} \tValid {cmd_args.metric}: {valid_perf:.4f}')
         train_history['loss'].append(train_loss)
-        val_history['loss'].append(valid_loss)
+        val_history['loss'].append(val_loss)
         train_history['iou'].append(train_metrics['iou'])
         val_history['iou'].append(val_metrics['iou'])
         train_history['f1'].append(train_metrics['f1'])
@@ -154,7 +151,7 @@ if __name__ == "__main__":
         path = "E:/thanh/ntu_group/phuong/segatten/train/checkpoints"
         path2 = "E:/thanh/ntu_group/phuong/segatten/train/graph"
         if valid_perf > max_perf:
-            print('Valid {} increased ({:.4f} --> {:.4f}). Model saved'.format(cmd_args.metric, max_perf, valid_perf))
+            print(f'Valid {cmd_args.metric} increased ({max_perf:.4f} --> {valid_perf:.4f}). Model saved')
             torch.save(model.state_dict(), f"{path}/unetcbam_epoch_{epoch}_{cmd_args.metric}_{valid_perf:.4f}.pt")
             max_perf = valid_perf
     # 6. Plot and save training and validation metrics
@@ -169,4 +166,4 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid(True)
         plt.savefig(f"{path2}/unetcbam_{metric_name}.png")
-        plt.show()    
+        plt.show()
