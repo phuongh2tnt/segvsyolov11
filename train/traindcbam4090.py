@@ -1,5 +1,4 @@
 import torch
-import timm
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
