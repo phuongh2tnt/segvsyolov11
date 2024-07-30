@@ -148,5 +148,5 @@ if __name__ == "__main__":
         plt.title(f'{metric_name.capitalize()} vs. Epochs')
         plt.legend()
         plt.grid(True)
-        plt.savefig(f'/content/drive/'My Drive'/AI/deepcbam/{metric_name}.png')
+        plt.savefig(f"'/content/drive/My Drive/AI/deepcbam/'{metric_name}.png")
         plt.show()
