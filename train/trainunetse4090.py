@@ -28,7 +28,7 @@ def setup_cuda():
 
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def train_model():
+def train_model(accumulation_steps=2):
     """
     Train the model over a single epoch
     :return: training loss and segmentation performance
@@ -102,7 +102,7 @@ def validate_model():
     return valid_loss / len(valid_loader), performance / len(valid_loader),val_metrics
 
 if __name__ == "__main__":
-   parser = argparse.ArgumentParser(description='Train a deep model for shrimp segmentation')
+    parser = argparse.ArgumentParser(description='Train a deep model for shrimp segmentation')
     parser.add_argument('-d', '--dataset', default="E:/thanh/ntu_group/phuong/segatten/train/dataset", type=str, help='Dataset folder')
     parser.add_argument('-e', '--epochs', default=100, type=int, help='Number of epochs')
     parser.add_argument('-b', '--batch-size', default=4, type=int, help='Batch size')
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         train_loss, train_perf,train_metrics = train_model()
 
         # 5.2. Validate the model
-        val_loss, val_perf,val_metrics = validate_model()
+        val_loss, valid_perf,val_metrics = validate_model()
 
         print('Epoch: {} \tTraining {}: {:.4f} \tValid {}: {:.4f}'.format(epoch, cmd_args.metric, train_perf,
                                                                           cmd_args.metric, valid_perf))
