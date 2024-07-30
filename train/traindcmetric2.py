@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
         if val_metrics[cmd_args.metric] > max_perf:
             print(f'Valid {cmd_args.metric} increased ({max_perf:.4f} --> {val_metrics[cmd_args.metric]:.4f}). Model saved')
-            torch.save(model.state_dict(), f"'/content/drive/My Drive/AI/deepcbam/checkpoints'/deeplabv3_cbam_epoch_{epoch}_{cmd_args.metric}_{val_metrics[cmd_args.metric]:.4f}.pt")
+            torch.save(model.state_dict(), f"'/content/drive/'My Drive'/AI/deepcbam/checkpoints'/deeplabv3_cbam_epoch_{epoch}_{cmd_args.metric}_{val_metrics[cmd_args.metric]:.4f}.pt")
             max_perf = val_metrics[cmd_args.metric]
 
     epochs_range = range(cmd_args.epochs)
@@ -148,5 +148,5 @@ if __name__ == "__main__":
         plt.title(f'{metric_name.capitalize()} vs. Epochs')
         plt.legend()
         plt.grid(True)
-        plt.savefig(f'/content/drive/My Drive/AI/deepcbam/{metric_name}.png')
+        plt.savefig(f'/content/drive/'My Drive'/AI/deepcbam/{metric_name}.png')
         plt.show()
