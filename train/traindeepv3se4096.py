@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
 import numpy as np
 import argparse
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import autocast, GradScaler
 from utils.metric2 import accuracy, iou, f1, precision, recall
 
 # Import the modified DeepLabV3 model with SE blocks
-from deepv3se import DeepLabV3SE  # 
+from deepv3se import DeepLabV3SE
+
 # Setup CUDA
 def setup_cuda():
     # Setting seeds for reproducibility
@@ -33,22 +33,22 @@ def train_model():
     """
     model.train()
     train_loss = 0.0
-    performance = 0
     train_metrics = {'iou': 0, 'accuracy': 0, 'precision': 0, 'recall': 0, 'f1': 0}
-    scaler = GradScaler('cuda')
+    scaler = GradScaler()
     for i, (img, gt) in enumerate(tqdm(train_loader, ncols=80, desc='Training')):
         optimizer.zero_grad()
         img, gt = img.to(device, dtype=torch.float), gt.to(device, dtype=torch.long)
-        logits = model(img)
-        logits = nn.functional.interpolate(logits, size=gt.shape[1:], mode='bilinear', align_corners=False)
-        loss = loss_fn(logits, gt)
-        loss.backward()
-        optimizer.step()
+        with autocast(device_type='cuda'):  # Specify the device_type here
+            logits = model(img)
+            logits = nn.functional.interpolate(logits, size=gt.shape[1:], mode='bilinear', align_corners=False)
+            loss = loss_fn(logits, gt)
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         train_loss += loss.item()
         seg_maps = logits.cpu().detach().numpy().argmax(axis=1)
         prediction = logits.argmax(axis=1).cpu().numpy()
         gt = gt.cpu().detach().numpy()
-        performance += getattr(metrics, cmd_args.metric)(seg_maps, gt)
         train_metrics['iou'] += iou(prediction, gt)
         train_metrics['accuracy'] += accuracy(prediction, gt)
         train_metrics['precision'] += precision(prediction, gt)
@@ -56,7 +56,7 @@ def train_model():
         train_metrics['f1'] += f1(prediction, gt)
     for key in train_metrics:
         train_metrics[key] /= len(train_loader)
-    return train_loss / len(train_loader), performance / len(train_loader),train_metrics
+    return train_loss / len(train_loader), train_metrics
 
 def validate_model():
     """
@@ -65,27 +65,38 @@ def validate_model():
     """
     model.eval()
     valid_loss = 0.0
-    performance = 0
     val_metrics = {'iou': 0, 'accuracy': 0, 'precision': 0, 'recall': 0, 'f1': 0}
+    metric_func = {
+        'iou': iou,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
+    selected_metric = metric_func.get(cmd_args.metric, iou)  # Default to 'iou' if metric not found
+
     with torch.no_grad():
         for i, (img, gt) in enumerate(tqdm(valid_loader, ncols=80, desc='Validation')):
             img, gt = img.to(device, dtype=torch.float), gt.to(device, dtype=torch.long)
-            logits = model(img)
-            logits = nn.functional.interpolate(logits, size=gt.shape[1:], mode='bilinear', align_corners=False)
-            loss = loss_fn(logits, gt)
+            with autocast(device_type='cuda'):  # Specify the device_type here
+                logits = model(img)
+                logits = nn.functional.interpolate(logits, size=gt.shape[1:], mode='bilinear', align_corners=False)
+                loss = loss_fn(logits, gt)
             valid_loss += loss.item()
             seg_maps = logits.cpu().detach().numpy().argmax(axis=1)
             prediction = logits.argmax(axis=1).cpu().numpy()
             gt = gt.cpu().detach().numpy()
-            performance += getattr(metrics, cmd_args.metric)(seg_maps, gt)
             val_metrics['iou'] += iou(prediction, gt)
             val_metrics['accuracy'] += accuracy(prediction, gt)
             val_metrics['precision'] += precision(prediction, gt)
             val_metrics['recall'] += recall(prediction, gt)
-            val_metrics['f1'] += f1(prediction, gt
+            val_metrics['f1'] += f1(prediction, gt)
+
     for key in val_metrics:
         val_metrics[key] /= len(valid_loader)
-    return valid_loss / len(valid_loader), performance / len(valid_loader),val_metrics
+    
+    performance = val_metrics[cmd_args.metric]  # Get the selected metric's average value
+    return valid_loss / len(valid_loader), performance, val_metrics
 
 if __name__ == "__main__":
     # 1. Parse the command arguments
@@ -101,7 +112,7 @@ if __name__ == "__main__":
     device = setup_cuda()
 
     # 2. Load the dataset
-    from utils.lanedataset2 import LaneDataset
+    from utils.lanedatasetv2 import LaneDataset
 
     train_dataset = LaneDataset(dataset_dir=cmd_args.dataset, subset='test', img_size=cmd_args.img_size)
     train_loader = torch.utils.data.DataLoader(train_dataset,
@@ -123,19 +134,26 @@ if __name__ == "__main__":
     optimizer = Adam(model.parameters(), lr=0.001)
     train_history = {'loss': [], 'iou': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1': []}
     val_history = {'loss': [], 'iou': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1': []}
+
     # 5. Start training the model
     max_perf = 0
     for epoch in range(cmd_args.epochs):
         # 5.1. Train the model over a single epoch
-        train_loss, train_perf,train_metrics = train_model()
+        train_loss, train_metrics = train_model()
 
         # 5.2. Validate the model
-        valid_loss, valid_perf,val_metrics = validate_model()
+        valid_loss, valid_perf, val_metrics = validate_model()
 
-        print('Epoch: {} \tTraining {}: {:.4f} \tValidation {}: {:.4f}'.format(epoch, cmd_args.metric, train_perf,
-                                                                               cmd_args.metric, valid_perf))
+        print('Epoch: {} \tTraining {}: {:.4f} \tValidation {}: {:.4f}'.format(
+            epoch,
+            cmd_args.metric,
+            train_metrics[cmd_args.metric],  # Use the selected metric from train_metrics
+            cmd_args.metric,
+            valid_perf
+        ))
+
         train_history['loss'].append(train_loss)
-        val_history['loss'].append(val_loss)
+        val_history['loss'].append(valid_loss)
         train_history['iou'].append(train_metrics['iou'])
         val_history['iou'].append(val_metrics['iou'])
         train_history['f1'].append(train_metrics['f1'])
@@ -146,13 +164,16 @@ if __name__ == "__main__":
         val_history['recall'].append(val_metrics['recall'])
         train_history['accuracy'].append(train_metrics['accuracy'])
         val_history['accuracy'].append(val_metrics['accuracy'])
+
         # 5.3. Save the model if the validation performance is increasing
-        path="E:/thanh/ntu_group/phuong/segatten/train/checkpoints"
-        path2="E:/thanh/ntu_group/phuong/segatten/train/graph"
+        path = "E:/thanh/ntu_group/phuong/segatten/train/checkpoints"
+        path2 = "E:/thanh/ntu_group/phuong/segatten/train/graph"
         if valid_perf > max_perf:
             print('Validation {} increased ({:.4f} --> {:.4f}). Model saved'.format(cmd_args.metric, max_perf, valid_perf))
             torch.save(model.state_dict(), f"{path}/deeplabv3se_epoch_{epoch}_{cmd_args.metric}_{valid_perf:.4f}.pt")
             max_perf = valid_perf
+
+    # 6. Plot and save training and validation metrics
     epochs_range = range(cmd_args.epochs)
     for metric_name in train_history:
         plt.figure()
