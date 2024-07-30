@@ -24,6 +24,11 @@ def setup_cuda():
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 from torch.amp import autocast, GradScaler
 # Training function
+def write_metrics_to_file(filename, epoch, train_metrics, val_metrics):
+    with open(filename, 'a') as f:
+        f.write(f"Epoch: {epoch}\n")
+        f.write(f"Training Metrics: {train_metrics}\n")
+        f.write(f"Validation Metrics: {val_metrics}\n\n")
 def train_model(accumulation_steps=2):
     model.train()
     train_loss = 0.0
@@ -90,7 +95,7 @@ def validate_model():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a deep model for shrimp segmentation')
     parser.add_argument('-d', '--dataset', default="E:/thanh/ntu_group/phuong/segatten/train/dataset", type=str, help='Dataset folder')
-    parser.add_argument('-e', '--epochs', default=5, type=int, help='Number of epochs')
+    parser.add_argument('-e', '--epochs', default=100, type=int, help='Number of epochs')
     parser.add_argument('-b', '--batch-size', default=4, type=int, help='Batch size')  # Adjusted batch size
     parser.add_argument('-i', '--img-size', default=480, type=int, help='Image size')
     parser.add_argument('-c', '--checkpoint', default='segatten/train/checkpoints', type=str, help='Checkpoint folder')
@@ -140,10 +145,11 @@ if __name__ == "__main__":
         train_history['accuracy'].append(train_metrics['accuracy'])
         val_history['accuracy'].append(val_metrics['accuracy'])
         #for key in train_metrics:
-         #   train_history[key].append(train_metrics[key])
-          #  val_history[key].append(val_metrics[key])
+           #  train_history[key].append(train_metrics[key])
+             #val_history[key].append(val_metrics[key])
         path="E:/thanh/ntu_group/phuong/segatten/train/checkpoints"
         path2="E:/thanh/ntu_group/phuong/segatten/train/graph"
+        #write_metrics_to_file("E:/thanh/ntu_group/phuong/segatten/train/graph/metric.txt", epoch, train_metrics, val_metrics)
         if val_metrics[cmd_args.metric] > max_perf:
             print(f'Valid {cmd_args.metric} increased ({max_perf:.4f} --> {val_metrics[cmd_args.metric]:.4f}). Model saved')
             torch.save(model.state_dict(), f"{path}/deeplabv3_cbam_epoch_{epoch}_{cmd_args.metric}_{val_metrics[cmd_args.metric]:.4f}.pt")
@@ -161,14 +167,4 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.savefig(f"{path2}/{metric_name}.png")
         plt.show()
-    plt.subplot(2, 2, 2)
-    plt.plot(epochs_range, train_history['iou'], label=f'Training iou')
-    plt.plot(epochs_range, val_history['iou'], label=f'Validation iou')
-    plt.xlabel('Epochs')
-    plt.ylabel('IOU')
-    plt.title(f'iou vs. Epochs')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"{path2}/iou.png")
-    plt.show()
-   
+    
