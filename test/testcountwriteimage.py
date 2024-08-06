@@ -1,3 +1,4 @@
+#code này đã ghi được vào ảnh rồi nhưng mà chữ nhỏ quá
 import sys
 import torch
 import argparse
