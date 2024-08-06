@@ -64,19 +64,28 @@ def predict(in_file, img_size=480):
     # Load the large font for the segment count
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
-    text = f"Số lượng tôm: {num_segments}"
+   # Add text "Model: USEnet"
+    model_text = "Model: USEnet"
+    segment_text = f"Số lượng tôm: {num_segments}"
     
-    # Get the bounding box of the large text
-    text_bbox = draw.textbbox((0, 0), text, font=large_font)
+    # Get the bounding box of the model text
+    model_text_bbox = draw.textbbox((0, 0), model_text, font=standard_font)
+    # Get the bounding box of the segment count text
+    segment_text_bbox = draw.textbbox((0, 0), segment_text, font=large_font)
     
     # Calculate text width and height
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
+    model_text_width = model_text_bbox[2] - model_text_bbox[0]
+    model_text_height = model_text_bbox[3] - model_text_bbox[1]
+    segment_text_width = segment_text_bbox[2] - segment_text_bbox[0]
+    segment_text_height = segment_text_bbox[3] - segment_text_bbox[1]
     
-    # Position the text at the bottom-right corner
-    text_position = (W - text_width - 10, H - text_height - 10)
+    # Position the texts
+    model_text_position = (W - model_text_width - 10, H - model_text_height - segment_text_height - 20)
+    segment_text_position = (W - segment_text_width - 10, H - segment_text_height - 10)
     
-    draw.text(text_position, text, fill=(255, 255, 255), font=large_font)
+    draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
+    draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=large_font)
+
 
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
