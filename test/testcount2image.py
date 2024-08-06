@@ -59,10 +59,10 @@ def predict(in_file, img_size=480):
     draw = ImageDraw.Draw(overlaid)
     
     # Load the standard font
-    standard_font = ImageFont.truetype("arial.ttf", size=40)  # You can specify the path to your font file and size
+    standard_font = ImageFont.truetype("Arial.ttf", size=40)  # You can specify the path to your font file and size
 
     # Load the large font for the segment count
-    large_font = ImageFont.truetype("arial.ttf", size=100)  # Larger font size for the number of segments
+    large_font = ImageFont.truetype("Arial.ttf", size=100)  # Larger font size for the number of segments
 
     text = f"Segments: {num_segments}"
     
@@ -79,7 +79,7 @@ def predict(in_file, img_size=480):
     draw.text(text_position, text, fill=(255, 255, 255), font=large_font)
 
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
-    print(f'File: {os.path.basename(in_file)} done. Segments: {num_segments}')
+    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
 
 if __name__ == "__main__":
 
