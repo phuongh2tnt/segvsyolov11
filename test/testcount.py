@@ -1,3 +1,4 @@
+#code này mới in ra text số lượng tôm thôi, giờ mình sửa code để có thể viết lên trên ảnh
 import sys
 import torch
 import argparse
