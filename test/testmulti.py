@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
             # Assume that you have a ground truth mask for each image in the same folder
             # with "_mask" appended to the image name before the extension
-            ground_truth_path = image_path.replace(".jpg", "_mask.png")
+            ground_truth_path = image_path.replace(".jpg", ".png")
 
             # Load the ground truth mask
             gt = Image.open(ground_truth_path).convert('L')
