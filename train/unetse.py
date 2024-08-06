@@ -22,7 +22,7 @@ class DoubleConv(nn.Module):
 class SELayer(nn.Module):
     def __init__(self, channel, reduction=16):
         super(SELayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)                    #返回1*1的池化结果
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)                   
         self.fc = nn.Sequential( 
             nn.Linear(channel, channel // reduction, bias=False),  #W1=C/r*C （1,1,C/r)
             nn.ReLU(inplace=True),                                                     
@@ -32,9 +32,9 @@ class SELayer(nn.Module):
 
     def forward(self, x):
         b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c) #view 相同的数据 不一样的大小（size）
+        y = self.avg_pool(x).view(b, c) 
         y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)   #expend_as到和x一样的维度
+        return x * y.expand_as(x)   
 
 class Unet(nn.Module):
     def __init__(self,in_ch,out_ch):
