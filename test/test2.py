@@ -1,6 +1,7 @@
 """
 UOW, 14/07/2022
 """
+import sys
 import torch
 import argparse
 import numpy as np
@@ -12,7 +13,8 @@ import glob
 from utils.iris_dataset import visualize
 from PIL import Image, ImageOps
 from timeit import default_timer as timer
-from ..train.unetse import Unet
+sys.path.append(os.path.abspath('/content/segatten/train'))
+from unetse import Unet
 
 
 
