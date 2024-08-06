@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # 1. Parse the command arguments
     args = argparse.ArgumentParser(description='Test a post-mortem iris segmentation model')
     args.add_argument('-i', '--input', default=None, type=str)
-    args.add_argument('-w', '--weights', default='/content/drive/My Drive/udeep/unetse/unetse_epoch_71_iou_0.8435.pt', type=str,
+    args.add_argument('-w', '--weights', default='/content/drive/My Drive/AI/udeep/unetse/unetse_epoch_71_iou_0.8435.pt', type=str,
                       help='Trained weights')
     args.add_argument('-o', '--output', default='outputs', type=str, help='Output folder')
     cmd_args = args.parse_args()
