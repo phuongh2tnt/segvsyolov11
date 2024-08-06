@@ -1,3 +1,4 @@
+#Bài này chạy tốt và ra độ chính xác trung bình của các hình rồi nhé.
 import sys
 import torch
 import argparse
