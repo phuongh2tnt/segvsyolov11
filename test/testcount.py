@@ -9,6 +9,9 @@ from utils.iris_dataset import visualize
 from PIL import Image, ImageOps, ImageDraw, ImageFont
 from timeit import default_timer as timer
 from scipy.ndimage import label  # For counting connected components
+#chỗ này là chỗ hay này, mình import sys và os, sau đó mình clone git vào, vì thư mục mình tổ chức train và test thư mục khác nhau trong khi đó
+#minh muốn test mô hình đã train, mô hình đã train thì phải import unetse và Unet ở train, nên mình dùng lệnh
+#lệnh này sys.path.append(os.path.abspath('/content/segatten/train'))
 sys.path.append(os.path.abspath('/content/segatten/train'))
 from unetse import Unet
 
