@@ -55,4 +55,4 @@ def predict(in_file, img_size=480):
     draw.text(text_position, text, fill=(255, 255, 255), font=large_font)
 
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
-    print(f'File: {os.path.basename(in_file)} done. Segments: {num_segments}')
+    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
