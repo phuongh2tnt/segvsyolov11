@@ -1,4 +1,28 @@
-from PIL import ImageFont
+import sys
+import torch
+import argparse
+import numpy as np
+import os
+import torchvision.transforms as T
+from scipy.ndimage import label  # For counting connected components
+from utils.iris_dataset import visualize
+from PIL import Image, ImageDraw, ImageFont
+from timeit import default_timer as timer
+
+sys.path.append(os.path.abspath('/content/segatten/train'))
+from unetse import Unet
+
+# Setup CUDA
+def setup_cuda():
+    seed = 50
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+
+    return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def predict(in_file, img_size=480):
     """
@@ -35,10 +59,10 @@ def predict(in_file, img_size=480):
     draw = ImageDraw.Draw(overlaid)
     
     # Load the standard font
-    standard_font = ImageFont.truetype("arial.ttf", size=20)  # You can specify the path to your font file and size
+    standard_font = ImageFont.truetype("arial.ttf", size=40)  # You can specify the path to your font file and size
 
     # Load the large font for the segment count
-    large_font = ImageFont.truetype("arial.ttf", size=40)  # Larger font size for the number of segments
+    large_font = ImageFont.truetype("arial.ttf", size=100)  # Larger font size for the number of segments
 
     text = f"Segments: {num_segments}"
     
@@ -55,4 +79,24 @@ def predict(in_file, img_size=480):
     draw.text(text_position, text, fill=(255, 255, 255), font=large_font)
 
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
-    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
+    print(f'File: {os.path.basename(in_file)} done. Segments: {num_segments}')
+
+if __name__ == "__main__":
+
+    # 1. Parse the command arguments
+    args = argparse.ArgumentParser(description='Test a post-mortem iris segmentation model')
+    args.add_argument('-i', '--input', default=None, type=str, help='Path to the input image')
+    args.add_argument('-w', '--weights', default='/content/drive/My Drive/AI/udeep/unetse/unetse_epoch_71_iou_0.8435.pt', type=str,
+                      help='Trained weights')
+    args.add_argument('-o', '--output', default='outputs', type=str, help='Output folder')
+    cmd_args = args.parse_args()
+
+    device = setup_cuda()
+
+    # 2. Create a segmentation model, then load the trained weights
+    model = Unet(in_ch=3, out_ch=2).to(device)
+    model.load_state_dict(torch.load(cmd_args.weights, device))
+    print('The segmentation model has been loaded.')
+
+    # 3. Perform segmentation and count segments
+    predict(cmd_args.input)
