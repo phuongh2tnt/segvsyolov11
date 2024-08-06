@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 import os
 import torchvision.transforms as T
-import utils.metrics as metrics
+import utils.metric2 as metrics
 import os
 import glob
 from utils.iris_dataset import visualize
