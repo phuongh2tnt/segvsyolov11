@@ -1,4 +1,5 @@
 #code này đã làm xong phần ghi chữ vào hình
+#Lam xong tung hinh roi
 import sys
 import torch
 import argparse
