@@ -59,10 +59,10 @@ def predict(in_file, img_size=480):
     draw = ImageDraw.Draw(overlaid)
     
     # Load the standard font
-    standard_font = ImageFont.truetype("Arial.ttf", size=40)  # You can specify the path to your font file and size
+    standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=40)  # You can specify the path to your font file and size
 
     # Load the large font for the segment count
-    large_font = ImageFont.truetype("Arial.ttf", size=100)  # Larger font size for the number of segments
+    large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     text = f"Segments: {num_segments}"
     
