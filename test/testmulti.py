@@ -8,7 +8,7 @@ from scipy.ndimage import label  # For counting connected components
 from utils.iris_dataset import visualize
 from PIL import Image, ImageDraw, ImageFont
 from timeit import default_timer as timer
-from metric2 import calculate_metrics  # Assuming you have a function like this in metric2.py
+import utils.metric2 as metrics  # Import your custom metrics
 
 sys.path.append(os.path.abspath('/content/segatten/train'))
 from unetse import Unet
@@ -131,17 +131,33 @@ if __name__ == "__main__":
 
             # Assume that you have a ground truth mask for each image in the same folder
             # with "_mask" appended to the image name before the extension
-            ground_truth_path = image_path.replace(".jpg", ".png")
+            ground_truth_path = image_path.replace(".jpg", "_mask.png")
+
+            # Load the ground truth mask
+            gt = Image.open(ground_truth_path).convert('L')
+            gt = np.array(gt)
 
             # Calculate metrics
-            metrics = calculate_metrics(seg_map, ground_truth_path)
-            for key in all_metrics:
-                all_metrics[key].append(metrics[key])
+            f1 = metrics.f1(seg_map, gt)
+            iou = metrics.iou(seg_map, gt)
+            accuracy = metrics.accuracy(seg_map, gt)
+            precision = metrics.precision(seg_map, gt)
+            recall = metrics.recall(seg_map, gt)
+
+            # Append metrics to accumulators
+            all_metrics['F1'].append(f1)
+            all_metrics['IOU'].append(iou)
+            all_metrics['Accuracy'].append(accuracy)
+            all_metrics['Precision'].append(precision)
+            all_metrics['Recall'].append(recall)
 
             # Write the metrics for this image to the file
             metrics_file.write(f"Image: {image_file}\n")
-            for key, value in metrics.items():
-                metrics_file.write(f"{key}: {value}\n")
+            metrics_file.write(f"F1 Score: {f1}\n")
+            metrics_file.write(f"IOU: {iou}\n")
+            metrics_file.write(f"Accuracy: {accuracy}\n")
+            metrics_file.write(f"Precision: {precision}\n")
+            metrics_file.write(f"Recall: {recall}\n")
             metrics_file.write("\n")
 
         # 6. Compute and write average metrics
