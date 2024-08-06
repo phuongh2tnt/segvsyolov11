@@ -1,3 +1,4 @@
+#code này đã làm xong phần ghi chữ vào hình
 import sys
 import torch
 import argparse
@@ -59,12 +60,11 @@ def predict(in_file, img_size=480):
     draw = ImageDraw.Draw(overlaid)
     
     # Load the standard font
-    standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=40)  # You can specify the path to your font file and size
-
+    standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=40)  # Đoạn font chữ này thay đường dẫn nếu thay máy
     # Load the large font for the segment count
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
-    text = f"Segments: {num_segments}"
+    text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the large text
     text_bbox = draw.textbbox((0, 0), text, font=large_font)
