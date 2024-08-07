@@ -21,10 +21,13 @@ class LaneDataset(Dataset):
         
         if subset in ['test', 'valid']:
             self.data_path = os.path.join(dataset_dir, subset)
-            text_file = os.path.join('segatten/train/dataset', f"{subset}/{subset}.txt")
+            if subset =='test':
+                text_file = 'E:/thanh/ntu_group/phuong/segatten/train/dataset/test/test.txt'
+            elif subset =='valid':
+                text_file = 'E:/thanh/ntu_group/phuong/segatten/train/dataset/valid/test.txt'
         else:
             self.data_path = 'segatten/test'
-            text_file = 'ssegatten/test/test.txt'
+            text_file = 'segatten/test/test.txt'
         
         with open(text_file, 'r') as f:
             self.filenames = f.read().splitlines()
