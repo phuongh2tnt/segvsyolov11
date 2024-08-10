@@ -100,7 +100,7 @@ def predict(in_file, img_size=480):
     print(f"Number of segments: {num_segments}")
 
     # Overlay the segment count on the image
-    overlaid = visualize(seg_map_postprocessed, np.array(img))
+    overlaid = visualize(seg_map, np.array(img))
     overlaid = Image.fromarray(overlaid)
 
     draw = ImageDraw.Draw(overlaid)
