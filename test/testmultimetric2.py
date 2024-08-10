@@ -4,7 +4,9 @@ import argparse
 import numpy as np
 import os
 import torchvision.transforms as T
-from scipy.ndimage import label, binary_dilation, binary_erosion  # For counting connected components and morphological operations
+import cv2
+from scipy.ndimage import label  # For counting connected components
+from skimage import morphology
 from utils.iris_dataset import visualize
 from PIL import Image, ImageDraw, ImageFont
 from timeit import default_timer as timer
@@ -25,6 +27,43 @@ def setup_cuda():
 
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+def preprocess_image(image):
+    """
+    Pre-process the image to enhance object separation.
+    :param image: input image as numpy array
+    :return: pre-processed image
+    """
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    
+    # Apply morphological operations
+    kernel = np.ones((5, 5), np.uint8)
+    processed = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
+    
+    return processed
+
+def postprocess_segmentation(seg_map):
+    """
+    Post-process the segmentation map to separate overlapping objects.
+    :param seg_map: input segmentation map as numpy array
+    :return: post-processed segmentation map
+    """
+    # Compute the distance transform
+    distance_transform = cv2.distanceTransform(seg_map.astype(np.uint8), cv2.DIST_L2, 5)
+    
+    # Normalize the distance transform
+    _, dist_normalized = cv2.threshold(distance_transform, 0.7 * distance_transform.max(), 255, cv2.THRESH_BINARY)
+    dist_normalized = np.uint8(dist_normalized)
+    
+    # Find local maxima
+    local_max = morphology.h_maxima(distance_transform, h=1)
+    
+    # Perform watershed segmentation
+    markers = ndi.label(local_max)[0]
+    labels = morphology.watershed(-distance_transform, markers, mask=seg_map)
+    
+    return labels
+
 def predict(in_file, img_size=480):
     """
     :param in_file: image file
@@ -35,7 +74,7 @@ def predict(in_file, img_size=480):
     # Pre-process input image and its ground-truth
     img = Image.open(in_file).convert('RGB')  # convert to RGB image
     W, H = img.size
-
+  
     img_resized = T.Resize((img_size, img_size), interpolation=T.InterpolationMode.BILINEAR)(img)
     img_tensor = T.ToTensor()(img_resized).to(device, dtype=torch.float).unsqueeze(dim=0)
 
@@ -49,19 +88,18 @@ def predict(in_file, img_size=480):
     seg_map = logits.cpu().detach().numpy().argmax(axis=1)
     seg_map = seg_map.squeeze()  # 'squeeze' used to remove the first dimension of 1 (i.e., batch size)
 
-    # Convert the segmentation map to a binary map for counting
-    shrimp_class = 1  # Assuming shrimp is labeled as 1 and background as 0
-    binary_seg_map = (seg_map == shrimp_class).astype(int)
+    # Preprocess the image
+    preprocessed_img = preprocess_image(np.array(img))
 
-    # Optional: apply morphological operations to separate touching objects
-    separated_seg_map = binary_erosion(binary_dilation(binary_seg_map))
+    # Postprocess segmentation map
+    seg_map_postprocessed = postprocess_segmentation(seg_map)
 
     # Count the number of segments (connected components)
-    labeled_seg_map, num_segments = label(separated_seg_map)
+    labeled_seg_map, num_segments = label(seg_map_postprocessed)
     print(f"Number of segments: {num_segments}")
 
     # Overlay the segment count on the image
-    overlaid = visualize(seg_map, np.array(img))
+    overlaid = visualize(seg_map_postprocessed, np.array(img))
     overlaid = Image.fromarray(overlaid)
 
     draw = ImageDraw.Draw(overlaid)
@@ -72,7 +110,7 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     # Add text "Model: USEnet"
-    model_text = cmd_args.net
+    model_text = f"Model: {cmd_args.net}"
     segment_text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the model text
@@ -96,7 +134,7 @@ def predict(in_file, img_size=480):
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
 
-    return seg_map  # Return the segmentation map for metric calculation
+    return seg_map_postprocessed  # Return the post-processed segmentation map for metric calculation
 
 if __name__ == "__main__":
 
@@ -107,13 +145,13 @@ if __name__ == "__main__":
                       help='Trained weights')
     args.add_argument('-o', '--output', default='outputs', type=str, help='Output folder')
     args.add_argument('-m', '--metrics_output', default='metrics.txt', type=str, help='File to save the metrics')
-    args.add_argument('-n','--net',default='unetse',type=str,help='create model')
+    args.add_argument('-n', '--net', default='unetse', type=str, help='Create model')
     cmd_args = args.parse_args()
 
     device = setup_cuda()
 
     # 2. Create a segmentation model, then load the trained weights
-    # Change to test all models with just one code block
+    # Change to test all model just 1 code
     if cmd_args.net == 'unetse':
         model = Unet(in_ch=3, out_ch=2).to(device)
     elif cmd_args.net == 'unetres':
@@ -173,10 +211,13 @@ if __name__ == "__main__":
             metrics_file.write(f"Recall: {recall}\n")
             metrics_file.write("\n")
 
-        # 6. Compute and write average metrics
-        avg_metrics = {key: np.mean(values) for key, values in all_metrics.items()}
+    # 6. Compute average metrics
+    avg_metrics = {key: np.mean(value) for key, value in all_metrics.items()}
+    
+    with open(cmd_args.metrics_output, 'a') as metrics_file:
         metrics_file.write("Average Metrics:\n")
-        for key, value in avg_metrics.items():
-            metrics_file.write(f"{key}: {value}\n")
-
-    print(f"Metrics have been saved to {cmd_args.metrics_output}")
+        metrics_file.write(f"F1 Score: {avg_metrics['F1']}\n")
+        metrics_file.write(f"IOU: {avg_metrics['IOU']}\n")
+        metrics_file.write(f"Accuracy: {avg_metrics['Accuracy']}\n")
+        metrics_file.write(f"Precision: {avg_metrics['Precision']}\n")
+        metrics_file.write(f"Recall: {avg_metrics['Recall']}\n")
