@@ -5,6 +5,7 @@ import numpy as np
 import os
 import torchvision.transforms as T
 import cv2
+from scipy import ndimage as ndi
 from scipy.ndimage import label  # For counting connected components
 from skimage import morphology
 from utils.iris_dataset import visualize
@@ -110,7 +111,7 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     # Add text "Model: USEnet"
-    model_text = f"Model: {cmd_args.net}"
+    model_text = f"Model {cmd_args.net} - Số lượng tôm: {sl}"
     segment_text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the model text
@@ -211,13 +212,15 @@ if __name__ == "__main__":
             metrics_file.write(f"Recall: {recall}\n")
             metrics_file.write("\n")
 
-    # 6. Compute average metrics
-    avg_metrics = {key: np.mean(value) for key, value in all_metrics.items()}
-    
-    with open(cmd_args.metrics_output, 'a') as metrics_file:
-        metrics_file.write("Average Metrics:\n")
-        metrics_file.write(f"F1 Score: {avg_metrics['F1']}\n")
-        metrics_file.write(f"IOU: {avg_metrics['IOU']}\n")
-        metrics_file.write(f"Accuracy: {avg_metrics['Accuracy']}\n")
-        metrics_file.write(f"Precision: {avg_metrics['Precision']}\n")
-        metrics_file.write(f"Recall: {avg_metrics['Recall']}\n")
+        # 6. Compute average metrics
+        avg_metrics = {key: np.mean(value) for key, value in all_metrics.items()}
+        
+        with open(cmd_args.metrics_output, 'a') as metrics_file:
+            metrics_file.write("Average Metrics:\n")
+            metrics_file.write(f"F1 Score: {avg_metrics['F1']}\n")
+            metrics_file.write(f"IOU: {avg_metrics['IOU']}\n")
+            metrics_file.write(f"Accuracy: {avg_metrics['Accuracy']}\n")
+            metrics_file.write(f"Precision: {avg_metrics['Precision']}\n")
+            metrics_file.write(f"Recall: {avg_metrics['Recall']}\n")
+
+    print(f"Metrics have been saved to {cmd_args.metrics_output}")
