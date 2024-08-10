@@ -101,7 +101,7 @@ if __name__ == "__main__":
                       help='Trained weights')
     args.add_argument('-o', '--output', default='outputs', type=str, help='Output folder')
     args.add_argument('-m', '--metrics_output', default='metrics.txt', type=str, help='File to save the metrics')
-    args.add_argument('-n','--net',default='unetse',type=str,help="create model')
+    args.add_argument('-n','--net',default='unetse',type=str,help='create model')
     cmd_args = args.parse_args()
 
     device = setup_cuda()
