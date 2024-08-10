@@ -66,7 +66,7 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
    # Add text "Model: USEnet"
-    model_text = "Model: USEnet"
+    model_text = cmd_args.net
     segment_text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the model text
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     #change to test all model just 1 code
     if cmd_args.net=='unetse':
         model = Unet(in_ch=3, out_ch=2).to(device)
-    elif cmd_args.net='unetres':
+    elif cmd_args.net=='unetres':
         import segmentation_models_pytorch as smp
         model = smp.Unet(encoder_name='resnet18', in_channels=3, classes=2).to(device)
     model.load_state_dict(torch.load(cmd_args.weights, device))
