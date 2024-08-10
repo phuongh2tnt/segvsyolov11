@@ -51,8 +51,6 @@ def predict(in_file, img_size=480):
     seg_map = seg_map.squeeze()  # 'squeeze' used to remove the first dimension of 1 (i.e., batch size)
     #Tính từng seg_map
     sl=0;
-    for k in np.unique(seg_map):
-        sl=sl+1
     # Count the number of segments (connected components)
     labeled_seg_map, num_segments = label(seg_map)
     print(f"Number of segments: {num_segments}")
