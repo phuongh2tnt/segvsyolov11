@@ -51,7 +51,7 @@ def predict(in_file, img_size=480):
 
     # Convert the segmentation map to a binary map for counting
     shrimp_class = 1  # Assuming shrimp is labeled as 1 and background as 0
-    binary_seg_map = (seg_map == shrimp_class).astype(np.int)
+    binary_seg_map = (seg_map == shrimp_class).astype(int)
 
     # Optional: apply morphological operations to separate touching objects
     separated_seg_map = binary_erosion(binary_dilation(binary_seg_map))
