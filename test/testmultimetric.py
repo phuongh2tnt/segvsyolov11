@@ -69,7 +69,7 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
    # Add text "Model: USEnet"
-    model_text = "Model"+cmd_args.net +"{sl}"
+    model_text = f"Model {cmd_args.net} - Số lượng tôm: {sl}"
     segment_text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the model text
