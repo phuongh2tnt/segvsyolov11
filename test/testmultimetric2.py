@@ -8,9 +8,8 @@ import cv2
 from scipy import ndimage as ndi
 from scipy.ndimage import label  # For counting connected components
 from skimage import morphology
-from utils.iris_dataset import visualize
+from skimage.segmentation import watershed
 from PIL import Image, ImageDraw, ImageFont
-from timeit import default_timer as timer
 import utils.metric2 as metrics  # Import your custom metrics
 
 sys.path.append(os.path.abspath('/content/segatten/train'))
@@ -61,7 +60,7 @@ def postprocess_segmentation(seg_map):
     
     # Perform watershed segmentation
     markers = ndi.label(local_max)[0]
-    labels = morphology.watershed(-distance_transform, markers, mask=seg_map)
+    labels = watershed(-distance_transform, markers, mask=seg_map)
     
     return labels
 
