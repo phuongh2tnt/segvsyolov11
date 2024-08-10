@@ -9,6 +9,7 @@ from scipy import ndimage as ndi
 from scipy.ndimage import label  # For counting connected components
 from skimage import morphology
 from skimage.segmentation import watershed
+from utils.iris_dataset import visualize
 from PIL import Image, ImageDraw, ImageFont
 import utils.metric2 as metrics  # Import your custom metrics
 
