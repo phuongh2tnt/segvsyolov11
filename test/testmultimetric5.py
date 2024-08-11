@@ -8,6 +8,7 @@ from scipy.ndimage import label, find_objects
 from PIL import Image, ImageDraw, ImageFont
 from sklearn import metrics
 from timeit import default_timer as timer
+from utils.iris_dataset import visualize
 import utils.metric2 as custom_metrics  # Import your custom metrics
 
 sys.path.append(os.path.abspath('/content/segatten/train'))
