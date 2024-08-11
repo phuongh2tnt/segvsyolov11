@@ -55,11 +55,16 @@ def predict(in_file, img_size=480):
     labeled_seg_map, num_segments_initial = label(seg_map)
     print(f"Initial number of segments: {num_segments_initial}")
 
-    # Calculate the common size of segments (e.g., mode)
+    # Calculate the common size of segments
     segment_sizes = np.bincount(labeled_seg_map.ravel())[1:]
-    common_size = stats.mode(segment_sizes)[0][0]
+    
+    if len(segment_sizes) > 0:
+        mode_result = stats.mode(segment_sizes)
+        common_size = mode_result.mode[0]  # Get the mode value
+    else:
+        common_size = 0  # Handle the case where there are no segments
 
-    # Set a size threshold based on the common size (e.g., half of the common size)
+    # Set a size threshold based on the common size
     size_threshold = common_size // 2
     print(f"Size threshold for merging: {size_threshold}")
 
@@ -71,7 +76,7 @@ def predict(in_file, img_size=480):
     print(f"Final number of segments after merging: {num_segments_final}")
 
     # Visualization and other operations remain the same
-    overlaid = visualize(seg_map, np.array(img))
+    overlaid = visualize(merged_seg_map, np.array(img))
     overlaid = Image.fromarray(overlaid)
 
     draw = ImageDraw.Draw(overlaid)
@@ -94,6 +99,7 @@ def predict(in_file, img_size=480):
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments_final}')
 
     return merged_seg_map
+
 
 if __name__ == "__main__":
     # 1. Parse the command arguments
