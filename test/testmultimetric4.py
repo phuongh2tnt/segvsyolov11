@@ -59,8 +59,12 @@ def predict(in_file, img_size=480):
     segment_sizes = np.bincount(labeled_seg_map.ravel())[1:]
     
     if len(segment_sizes) > 0:
+        # Compute mode and handle different result shapes
         mode_result = stats.mode(segment_sizes)
-        common_size = mode_result.mode[0]  # Get the mode value
+        if isinstance(mode_result.mode, np.ndarray):
+            common_size = mode_result.mode[0]  # Get the mode value
+        else:
+            common_size = mode_result.mode  # Direct scalar mode result
     else:
         common_size = 0  # Handle the case where there are no segments
 
