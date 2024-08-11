@@ -57,31 +57,32 @@ def predict(in_file, img_size=480):
     labeled_seg_map, num_segments_initial = label(seg_map)
     print(f"Initial number of segments: {num_segments_initial}")
 
-    # Calculate the size of each component
+    # Calculate sizes of each connected component
     segment_sizes = np.bincount(labeled_seg_map.ravel())[1:]  # Exclude background
-    
-    if len(segment_sizes) > 0:
-        # Compute average size
+    num_segments = len(segment_sizes)
+
+    if num_segments > 0:
+        min_size = np.min(segment_sizes)
         avg_size = np.mean(segment_sizes)
+        print(f"Minimum size of segments: {min_size}")
         print(f"Average size of segments: {avg_size}")
 
-        # Create a mask for components larger than the average size
-        size_threshold = avg_size
-        mask = np.isin(labeled_seg_map, np.where(segment_sizes >= size_threshold)[0] + 1)
+        # Create a mask for components within the size range (min_size to avg_size)
+        mask = np.isin(labeled_seg_map, np.where((segment_sizes >= min_size) & (segment_sizes <= avg_size))[0] + 1)
         filtered_seg_map = labeled_seg_map * mask.astype(int)
 
-        # Recount the number of segments after filtering
-        labeled_filtered_seg_map, num_segments_final = label(filtered_seg_map)
+        # Re-label the filtered components
+        filtered_labeled_seg_map, num_segments_final = label(filtered_seg_map)
         print(f"Final number of segments after filtering: {num_segments_final}")
     else:
-        # If no segments are found, handle appropriately
+        # Handle case with no segments
+        min_size = 0
         avg_size = 0
-        size_threshold = 0
         filtered_seg_map = np.zeros_like(seg_map, dtype=int)
         num_segments_final = 0
 
     # Visualization and other operations remain the same
-    overlaid = visualize(seg_map, np.array(img))
+    overlaid = visualize(filtered_seg_map, np.array(img))
     overlaid = Image.fromarray(overlaid)
 
     draw = ImageDraw.Draw(overlaid)
