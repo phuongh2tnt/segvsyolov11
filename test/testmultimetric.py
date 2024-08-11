@@ -49,8 +49,7 @@ def predict(in_file, img_size=480):
     # Measure the segmentation performance
     seg_map = logits.cpu().detach().numpy().argmax(axis=1)
     seg_map = seg_map.squeeze()  # 'squeeze' used to remove the first dimension of 1 (i.e., batch size)
-    #Tính từng seg_map
-    sl=0;
+   
     # Count the number of segments (connected components)
     labeled_seg_map, num_segments = label(seg_map)
     print(f"Number of segments: {num_segments}")
@@ -67,7 +66,7 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
    # Add text "Model: USEnet"
-    model_text = f"Model {cmd_args.net} - Số lượng tôm: {sl}"
+    model_text = f"Model: {cmd_args.net}"
     segment_text = f"Số lượng tôm: {num_segments}"
     
     # Get the bounding box of the model text
