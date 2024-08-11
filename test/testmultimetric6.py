@@ -4,9 +4,8 @@ import argparse
 import numpy as np
 import os
 import torchvision.transforms as T
-from scipy.ndimage import label
+from scipy.ndimage import label, find_objects
 from PIL import Image, ImageDraw, ImageFont
-import cv2  # Import OpenCV for contour detection
 from sklearn import metrics
 from timeit import default_timer as timer
 from utils.iris_dataset import visualize
@@ -25,10 +24,6 @@ def setup_cuda():
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-import cv2
-import numpy as np
-from scipy.ndimage import distance_transform_edt
 
 def predict(in_file, img_size=480):
     """
@@ -51,43 +46,49 @@ def predict(in_file, img_size=480):
     seg_map = logits.cpu().detach().numpy().argmax(axis=1)
     seg_map = seg_map.squeeze()  # 'squeeze' used to remove the first dimension of 1 (i.e., batch size)
 
-    # Convert segmentation map to binary image
-    seg_map_binary = np.uint8(seg_map * 255)  # Assuming shrimp are labeled as 1
+    # Count the number of segments (connected components)
+    labeled_seg_map, num_segments = label(seg_map)
+    print(f"Number of segments: {num_segments}")
 
-    # Perform distance transform
-    dist_transform = distance_transform_edt(seg_map_binary)
+    # Calculate sizes of each segment
+    segment_sizes = np.bincount(labeled_seg_map.flatten())
+    segment_sizes[0] = 0  # The background (0) is not counted
 
-    # Threshold the distance transform to get sure foreground areas
-    ret, sure_fg = cv2.threshold(dist_transform, 0.7*dist_transform.max(), 255, 0)
-    sure_fg = np.uint8(sure_fg)
+    # Calculate thresholds
+    min_size = np.min(segment_sizes[1:])  # Avoid zero size
+    avg_size = np.mean(segment_sizes[1:])
+    max_size = np.max(segment_sizes[1:])
+    
+    print(f"Min Size: {min_size}, Avg Size: {avg_size}, Max Size: {max_size}")
 
-    # Use markers for the watershed algorithm
-    ret, markers = cv2.connectedComponents(sure_fg)
-
-    # Apply watershed to segment the connected components
-    markers = markers + 1
-    markers[seg_map_binary == 0] = 0
-    markers = cv2.watershed(np.array(img), markers)
-
-    # Count the shrimp based on the watershed result
-    num_shrimp = len(np.unique(markers)) - 1  # subtract one to exclude the background
-
-    print(f"Number of shrimp: {num_shrimp}")
+    # Count segments based on size
+    small_segments = np.sum(segment_sizes[1:] <= min_size)
+    avg_segments = np.sum((segment_sizes[1:] > min_size) & (segment_sizes[1:] <= avg_size))
+    large_segments = np.sum(segment_sizes[1:] > avg_size)
+    
+    print(f"Small segments: {small_segments}, Average segments: {avg_segments}, Large segments: {large_segments}")
 
     # Create an overlay image
     overlay_image = Image.new('RGB', (W, H), (0, 0, 0))
     draw = ImageDraw.Draw(overlay_image)
 
-    # Draw contours on the overlay image
-    overlay_image_np = np.array(overlay_image)
-    for marker in np.unique(markers):
-        if marker == -1:
-            continue  # Skip the boundary marker
-        mask = np.uint8(markers == marker)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(overlay_image_np, contours, -1, (0, 255, 0), thickness=cv2.FILLED)
-
-    overlay_image = Image.fromarray(overlay_image_np)
+    # Assign colors based on size thresholds and draw on overlay
+    for label_val in np.unique(labeled_seg_map):
+        if label_val == 0:
+            continue  # Skip background
+        size = segment_sizes[label_val]
+        if size <= min_size:
+            color = (255, 0, 0)  # Red for small
+        elif size <= avg_size:
+            color = (0, 255, 0)  # Green for average
+        else:
+            color = (0, 0, 255)  # Blue for large
+        
+        # Draw the segments with the chosen color
+        segment_mask = (labeled_seg_map == label_val)
+        overlay_image_np = np.array(overlay_image)
+        overlay_image_np[segment_mask] = color
+        overlay_image = Image.fromarray(overlay_image_np)
 
     # Blend the overlay image with the original image
     blended_image = Image.blend(img, overlay_image, alpha=0.5)
@@ -98,31 +99,32 @@ def predict(in_file, img_size=480):
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     model_text = f"Model: {cmd_args.net}"
-    shrimp_text = f"Số lượng tôm: {num_shrimp}"
+    segment_text = f"Số lượng tôm: {num_segments} (Nhỏ: {small_segments}, Vừa: {avg_segments}, Lớn: {large_segments})"
 
     # Get the bounding box of the model text
     model_text_bbox = draw.textbbox((0, 0), model_text, font=standard_font)
-    # Get the bounding box of the shrimp count text
-    shrimp_text_bbox = draw.textbbox((0, 0), shrimp_text, font=large_font)
+    # Get the bounding box of the segment count text
+    segment_text_bbox = draw.textbbox((0, 0), segment_text, font=large_font)
 
     # Calculate text width and height
     model_text_width = model_text_bbox[2] - model_text_bbox[0]
     model_text_height = model_text_bbox[3] - model_text_bbox[1]
-    shrimp_text_width = shrimp_text_bbox[2] - shrimp_text_bbox[0]
-    shrimp_text_height = shrimp_text_bbox[3] - shrimp_text_bbox[1]
+    segment_text_width = segment_text_bbox[2] - segment_text_bbox[0]
+    segment_text_height = segment_text_bbox[3] - segment_text_bbox[1]
 
     # Position the texts
-    model_text_position = (W - model_text_width - 10, H - model_text_height - shrimp_text_height - 20)
-    shrimp_text_position = (W - shrimp_text_width - 10, H - shrimp_text_height - 10)
+    model_text_position = (W - model_text_width - 10, H - model_text_height - segment_text_height - 20)
+    segment_text_position = (W - segment_text_width - 10, H - segment_text_height - 10)
 
     draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
-    draw.text(shrimp_text_position, shrimp_text, fill=(255, 255, 255), font=large_font)
+    draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=large_font)
 
     # Save the final blended image
     blended_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
-    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_shrimp}')
+    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
 
     return seg_map  # Return the segmentation map for metric calculation
+
 
 if __name__ == "__main__":
 
@@ -148,7 +150,7 @@ if __name__ == "__main__":
     print('The segmentation model has been loaded.')
 
     # 3. Read the image names from the input text file
-    with open(cmd_args.input, 'r') as f:
+    with open(cmd_args.input, 'r') as f):
         image_files = [line.strip() + '.jpg' for line in f.readlines()]
 
     # Initialize metrics accumulators
