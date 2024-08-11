@@ -26,6 +26,10 @@ def setup_cuda():
         torch.cuda.manual_seed(seed)
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+import cv2
+import numpy as np
+from scipy.ndimage import distance_transform_edt
+
 def predict(in_file, img_size=480):
     """
     :param in_file: image file
@@ -47,14 +51,27 @@ def predict(in_file, img_size=480):
     seg_map = logits.cpu().detach().numpy().argmax(axis=1)
     seg_map = seg_map.squeeze()  # 'squeeze' used to remove the first dimension of 1 (i.e., batch size)
 
-    # Convert segmentation map to binary image for contour detection
+    # Convert segmentation map to binary image
     seg_map_binary = np.uint8(seg_map * 255)  # Assuming shrimp are labeled as 1
 
-    # Find contours in the binary segmentation map
-    contours, _ = cv2.findContours(seg_map_binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Perform distance transform
+    dist_transform = distance_transform_edt(seg_map_binary)
 
-    # Count the number of contours (which should correspond to individual shrimp)
-    num_shrimp = len(contours)
+    # Threshold the distance transform to get sure foreground areas
+    ret, sure_fg = cv2.threshold(dist_transform, 0.7*dist_transform.max(), 255, 0)
+    sure_fg = np.uint8(sure_fg)
+
+    # Use markers for the watershed algorithm
+    ret, markers = cv2.connectedComponents(sure_fg)
+
+    # Apply watershed to segment the connected components
+    markers = markers + 1
+    markers[seg_map_binary == 0] = 0
+    markers = cv2.watershed(np.array(img), markers)
+
+    # Count the shrimp based on the watershed result
+    num_shrimp = len(np.unique(markers)) - 1  # subtract one to exclude the background
+
     print(f"Number of shrimp: {num_shrimp}")
 
     # Create an overlay image
@@ -63,8 +80,12 @@ def predict(in_file, img_size=480):
 
     # Draw contours on the overlay image
     overlay_image_np = np.array(overlay_image)
-    for contour in contours:
-        cv2.drawContours(overlay_image_np, [contour], -1, (0, 255, 0), thickness=cv2.FILLED)
+    for marker in np.unique(markers):
+        if marker == -1:
+            continue  # Skip the boundary marker
+        mask = np.uint8(markers == marker)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(overlay_image_np, contours, -1, (0, 255, 0), thickness=cv2.FILLED)
 
     overlay_image = Image.fromarray(overlay_image_np)
 
@@ -102,7 +123,6 @@ def predict(in_file, img_size=480):
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_shrimp}')
 
     return seg_map  # Return the segmentation map for metric calculation
-
 
 if __name__ == "__main__":
 
