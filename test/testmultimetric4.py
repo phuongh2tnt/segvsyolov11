@@ -39,6 +39,8 @@ def merge_small_components(seg_map, size_threshold):
     cleaned_seg_map = remove_small_objects(seg_map, min_size=size_threshold, connectivity=2)
     return cleaned_seg_map
 
+from scipy import stats
+
 def predict(in_file, img_size=480):
     model.eval()
 
@@ -55,32 +57,31 @@ def predict(in_file, img_size=480):
     labeled_seg_map, num_segments_initial = label(seg_map)
     print(f"Initial number of segments: {num_segments_initial}")
 
-    # Calculate the common size of segments
-    segment_sizes = np.bincount(labeled_seg_map.ravel())[1:]
+    # Calculate the size of each component
+    segment_sizes = np.bincount(labeled_seg_map.ravel())[1:]  # Exclude background
     
     if len(segment_sizes) > 0:
-        # Compute mode and handle different result shapes
-        mode_result = stats.mode(segment_sizes)
-        if isinstance(mode_result.mode, np.ndarray):
-            common_size = mode_result.mode[0]  # Get the mode value
-        else:
-            common_size = mode_result.mode  # Direct scalar mode result
+        # Compute average size
+        avg_size = np.mean(segment_sizes)
+        print(f"Average size of segments: {avg_size}")
+
+        # Create a mask for components larger than the average size
+        size_threshold = avg_size
+        mask = np.isin(labeled_seg_map, np.where(segment_sizes >= size_threshold)[0] + 1)
+        filtered_seg_map = labeled_seg_map * mask.astype(int)
+
+        # Recount the number of segments after filtering
+        labeled_filtered_seg_map, num_segments_final = label(filtered_seg_map)
+        print(f"Final number of segments after filtering: {num_segments_final}")
     else:
-        common_size = 0  # Handle the case where there are no segments
-
-    # Set a size threshold based on the common size
-    size_threshold = common_size // 2
-    print(f"Size threshold for merging: {size_threshold}")
-
-    # Merge small components based on the size threshold
-    merged_seg_map = merge_small_components(labeled_seg_map, size_threshold)
-    
-    # Recount the number of segments after merging
-    labeled_merged_seg_map, num_segments_final = label(merged_seg_map)
-    print(f"Final number of segments after merging: {num_segments_final}")
+        # If no segments are found, handle appropriately
+        avg_size = 0
+        size_threshold = 0
+        filtered_seg_map = np.zeros_like(seg_map, dtype=int)
+        num_segments_final = 0
 
     # Visualization and other operations remain the same
-    overlaid = visualize(merged_seg_map, np.array(img))
+    overlaid = visualize(seg_map, np.array(img))
     overlaid = Image.fromarray(overlaid)
 
     draw = ImageDraw.Draw(overlaid)
@@ -102,7 +103,7 @@ def predict(in_file, img_size=480):
     overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments_final}')
 
-    return merged_seg_map
+    return filtered_seg_map
 
 
 if __name__ == "__main__":
