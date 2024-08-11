@@ -60,9 +60,8 @@ def predict(in_file, img_size=480):
     
     print(f"Min Size: {min_size}, Avg Size: {avg_size}, Max Size: {max_size}")
 
-    # Color coding based on size
-    color_map = np.zeros_like(seg_map, dtype=np.uint8)
-    color_map[labeled_seg_map > 0] = 255  # Default color for objects
+    # Create an empty RGB color map
+    color_map = np.zeros((H, W, 3), dtype=np.uint8)
 
     # Assign colors based on size thresholds
     for label_val in np.unique(labeled_seg_map):
@@ -75,10 +74,12 @@ def predict(in_file, img_size=480):
             color = [0, 255, 0]  # Green for average
         else:
             color = [0, 0, 255]  # Blue for large
+        
+        # Apply color to the color map
         color_map[labeled_seg_map == label_val] = color
 
     # Create an image from the color map
-    color_map_image = Image.fromarray(color_map.astype(np.uint8))
+    color_map_image = Image.fromarray(color_map)
 
     # Overlay the segment count on the image
     overlaid = visualize(seg_map, np.array(img))
