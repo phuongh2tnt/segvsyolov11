@@ -150,7 +150,7 @@ if __name__ == "__main__":
     print('The segmentation model has been loaded.')
 
     # 3. Read the image names from the input text file
-    with open(cmd_args.input, 'r') as f):
+    with open(cmd_args.input, 'r') as f:
         image_files = [line.strip() + '.jpg' for line in f.readlines()]
 
     # Initialize metrics accumulators
