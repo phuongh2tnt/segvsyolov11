@@ -61,39 +61,36 @@ def predict(in_file, img_size=480):
     
     print(f"Min Size: {min_size}, Avg Size: {avg_size}, Max Size: {max_size}")
 
-    # Create an empty RGB color map
-    color_map = np.zeros((H, W, 3), dtype=np.uint8)
+    # Create an overlay image
+    overlay_image = Image.new('RGB', (W, H), (0, 0, 0))
+    draw = ImageDraw.Draw(overlay_image)
 
-    # Assign colors based on size thresholds
+    # Assign colors based on size thresholds and draw on overlay
     for label_val in np.unique(labeled_seg_map):
         if label_val == 0:
             continue  # Skip background
         size = segment_sizes[label_val]
         if size <= min_size:
-            color = [255, 0, 0]  # Red for small
+            color = (255, 0, 0)  # Red for small
         elif size <= avg_size:
-            color = [0, 255, 0]  # Green for average
+            color = (0, 255, 0)  # Green for average
         else:
-            color = [0, 0, 255]  # Blue for large
+            color = (0, 0, 255)  # Blue for large
         
-        # Apply color to the color map
-        color_map[labeled_seg_map == label_val] = color
+        # Draw the segments with the chosen color
+        segment_mask = (labeled_seg_map == label_val)
+        overlay_image_np = np.array(overlay_image)
+        overlay_image_np[segment_mask] = color
+        overlay_image = Image.fromarray(overlay_image_np)
 
-    # Create an image from the color map
-    color_map_image = Image.fromarray(color_map)
+    # Blend the overlay image with the original image
+    blended_image = Image.blend(img, overlay_image, alpha=0.5)
 
-    # Overlay the segment count on the image
-    overlaid = visualize(seg_map, np.array(img))
-    overlaid = Image.fromarray(overlaid)
-
-    draw = ImageDraw.Draw(overlaid)
-
-    # Load the standard font
+    # Add text to the blended image
+    draw = ImageDraw.Draw(blended_image)
     standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Adjust path if necessary
-    # Load the large font for the segment count
     large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
-    # Add text "Model: USEnet"
     model_text = f"Model: {cmd_args.net}"
     segment_text = f"Số lượng tôm: {num_segments}"
 
@@ -115,11 +112,12 @@ def predict(in_file, img_size=480):
     draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
     draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=large_font)
 
-    # Save the overlaid image
-    overlaid.save(cmd_args.output + os.sep + os.path.basename(in_file))
+    # Save the final blended image
+    blended_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
 
     return seg_map  # Return the segmentation map for metric calculation
+
 
 if __name__ == "__main__":
 
