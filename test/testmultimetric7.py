@@ -13,7 +13,9 @@ import utils.metric2 as custom_metrics  # Import your custom metrics
 
 sys.path.append(os.path.abspath('/content/segatten/train'))
 from unetse import Unet
-
+from cbamunet import UNet 
+from deepcbam import DeepLabV3_CBAM
+from deepv3se import DeepLabV3SE
 # Setup CUDA
 def setup_cuda():
     seed = 50
@@ -140,6 +142,15 @@ if __name__ == "__main__":
     elif cmd_args.net == 'UResnet':
         import segmentation_models_pytorch as smp
         model = smp.Unet(encoder_name='resnet18', in_channels=3, classes=2).to(device)
+    elif cmd_args.net == 'U-CBAM':
+        model = UNet(in_channels=3,out_channels=2).to(device)
+    elif cmd_args.net == 'DV3-CBAM':
+        model = DeepLabV3_CBAM(n_classes=2).to(device)
+    elif cmd_args.net == 'DV3-SE':
+        model = DeepLabV3SE(num_classes=2).to(device)
+    elif cmd_args.net == 'DeepLabV3Resnet':
+        import segmentation_models_pytorch as smp
+        model = smp.DeepLabV3(encoder_name='resnet34', in_channels=3, classes=2).to(device)  
     model.load_state_dict(torch.load(cmd_args.weights, device))
     print('The segmentation model has been loaded.')
 
