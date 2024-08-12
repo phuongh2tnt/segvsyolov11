@@ -135,7 +135,7 @@ if __name__ == "__main__":
     device = setup_cuda()
 
     # 2. Create a segmentation model, then load the trained weights
-    if cmd_args.net == 'unetse':
+    if cmd_args.net == 'U-SE':
         model = Unet(in_ch=3, out_ch=2).to(device)
     elif cmd_args.net == 'UResnet':
         import segmentation_models_pytorch as smp
