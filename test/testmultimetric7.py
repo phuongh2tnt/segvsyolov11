@@ -55,16 +55,24 @@ def predict(in_file, img_size=480):
     segment_sizes[0] = 0  # The background (0) is not counted
 
     # Calculate thresholds
+    min_size = np.min(segment_sizes[1:])  # Avoid zero size
     avg_size = np.mean(segment_sizes[1:])
+    max_size = np.max(segment_sizes[1:])
     
-    # Find segments above average size
-    above_avg_sizes = [size for size in segment_sizes[1:] if size > avg_size]
-    if above_avg_sizes:
-        avg_size_above_avg = np.mean(above_avg_sizes)
-    else:
-        avg_size_above_avg = 0  # In case there are no segments above average size
+    print(f"Min Size: {min_size}, Avg Size: {avg_size}, Max Size: {max_size}")
 
-    print(f"Avg Size: {avg_size}, Avg Size of Segments Above Average: {avg_size_above_avg}")
+    # Count segments based on size
+    small_segments = np.sum(segment_sizes[1:] <= min_size)
+    avg_segments = np.sum((segment_sizes[1:] > min_size) & (segment_sizes[1:] <= avg_size))
+    large_segments = np.sum(segment_sizes[1:] > avg_size)
+    
+    print(f"Small segments: {small_segments}, Average segments: {avg_segments}, Large segments: {large_segments}")
+
+    # Calculate the average size of segments larger than the overall average
+    above_avg_sizes = segment_sizes[segment_sizes > avg_size]
+    avg_size_above_avg = np.mean(above_avg_sizes) if len(above_avg_sizes) > 0 else 0
+
+    print(f"Average Size of Segments Above Overall Average: {avg_size_above_avg}")
 
     # Create an overlay image
     overlay_image = Image.new('RGB', (W, H), (0, 0, 0))
@@ -75,10 +83,12 @@ def predict(in_file, img_size=480):
         if label_val == 0:
             continue  # Skip background
         size = segment_sizes[label_val]
-        if size <= avg_size:
-            color = (0, 255, 0)  # Green for average or below
+        if size <= min_size:
+            color = (255, 0, 0)  # Red for small
+        elif size <= avg_size:
+            color = (0, 255, 0)  # Green for average
         else:
-            color = (0, 0, 255)  # Blue for above average
+            color = (0, 0, 255)  # Blue for large
         
         # Draw the segments with the chosen color
         segment_mask = (labeled_seg_map == label_val)
@@ -92,21 +102,37 @@ def predict(in_file, img_size=480):
     # Add text to the blended image
     draw = ImageDraw.Draw(blended_image)
     standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Adjust path if necessary
+    large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     model_text = f"Model: {cmd_args.net}"
-    segment_text = f"Số lượng tôm: {num_segments}"
-    avg_size_text = f"Avg Size Above Avg: {avg_size_above_avg:.2f}"
+    segment_text = f"Số lượng tôm: {num_segments} (Nhỏ: {small_segments}, Vừa: {avg_segments}, Lớn: {large_segments})"
+    avg_above_text = f"Avg Size Above Avg: {avg_size_above_avg:.2f}"
+
+    # Get the bounding box of the model text
+    model_text_bbox = draw.textbbox((0, 0), model_text, font=standard_font)
+    # Get the bounding box of the segment count text
+    segment_text_bbox = draw.textbbox((0, 0), segment_text, font=large_font)
+
+    # Calculate text width and height
+    model_text_width = model_text_bbox[2] - model_text_bbox[0]
+    model_text_height = model_text_bbox[3] - model_text_bbox[1]
+    segment_text_width = segment_text_bbox[2] - segment_text_bbox[0]
+    segment_text_height = segment_text_bbox[3] - segment_text_bbox[1]
 
     # Position the texts
-    draw.text((10, 10), model_text, fill=(255, 255, 255), font=standard_font)
-    draw.text((10, 120), segment_text, fill=(255, 255, 255), font=standard_font)
-    draw.text((10, 230), avg_size_text, fill=(255, 255, 255), font=standard_font)
+    model_text_position = (W - model_text_width - 10, H - model_text_height - segment_text_height - 20)
+    segment_text_position = (W - segment_text_width - 10, H - segment_text_height - 10)
+
+    draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
+    draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=large_font)
+    draw.text((10, 10), avg_above_text, fill=(255, 255, 255), font=standard_font)
 
     # Save the final blended image
     blended_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
 
     return seg_map  # Return the segmentation map for metric calculation
+
 
 
 
