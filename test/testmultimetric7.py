@@ -25,7 +25,7 @@ def setup_cuda():
         torch.cuda.manual_seed(seed)
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def predict(in_file, img_size=480, threshold=6600):
+def predict(in_file, img_size=480, threshold=5000):
     """
     :param in_file: image file
     :param img_size: image size
