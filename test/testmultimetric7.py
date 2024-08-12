@@ -83,42 +83,39 @@ def predict(in_file, img_size=480, threshold=6600):
     )
     print(f"Rounded Weighted Number of Segments: {num_segments_weighted}")
 
-    # Create an overlay image
-    blended_image = Image.blend(img, img, alpha=0.5)  # Placeholder for the image, no overlay needed
+    # Visualize the segmentation map overlaid on the original image
+    seg_map_visualized = visualize(seg_map, np.array(img))
+    overlaid_image = Image.fromarray(seg_map_visualized)
 
-    # Add text to the blended image
-    draw = ImageDraw.Draw(blended_image)
+    # Add text to the overlaid image
+    draw = ImageDraw.Draw(overlaid_image)
     standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Adjust path if necessary
 
     model_text = f"Model: {cmd_args.net}"
     segment_text = f"Số lượng tôm: {num_segments_weighted}"
-    # Overlay the segment count on the image
-    overlaid = visualize(seg_map, np.array(img))
-    overlaid = Image.fromarray(overlaid)
 
-    # Get the bounding box of the model text
+    # Get the bounding box of the texts
     model_text_bbox = draw.textbbox((0, 0), model_text, font=standard_font)
-    # Get the bounding box of the segment count text
     segment_text_bbox = draw.textbbox((0, 0), segment_text, font=standard_font)
 
-    # Calculate text width and height
+    # Calculate text widths
     model_text_width = model_text_bbox[2] - model_text_bbox[0]
-    model_text_height = model_text_bbox[3] - model_text_bbox[1]
     segment_text_width = segment_text_bbox[2] - segment_text_bbox[0]
-    segment_text_height = segment_text_bbox[3] - segment_text_bbox[1]
 
-    # Position the texts
-    model_text_position = (W - model_text_width - 10, H - model_text_height - segment_text_height - 20)
-    segment_text_position = (W - segment_text_width - 10, H - segment_text_height - 10)
+    # Calculate the center positions for the texts
+    model_text_position = ((W - model_text_width) // 2, 10)
+    segment_text_position = ((W - segment_text_width) // 2, model_text_position[1] + model_text_bbox[3] + 10)
 
+    # Draw the texts on the image
     draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
     draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=standard_font)
 
-    # Save the final blended image
-    blended_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
+    # Save the final overlaid image
+    overlaid_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
     print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments_weighted}')
 
     return seg_map  # Return the segmentation map for metric calculation
+
 
 
 
