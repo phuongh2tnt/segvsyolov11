@@ -137,7 +137,7 @@ if __name__ == "__main__":
     # 2. Create a segmentation model, then load the trained weights
     if cmd_args.net == 'unetse':
         model = Unet(in_ch=3, out_ch=2).to(device)
-    elif cmd_args.net == 'unetres':
+    elif cmd_args.net == 'UResnet':
         import segmentation_models_pytorch as smp
         model = smp.Unet(encoder_name='resnet18', in_channels=3, classes=2).to(device)
     model.load_state_dict(torch.load(cmd_args.weights, device))
