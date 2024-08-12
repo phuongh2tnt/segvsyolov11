@@ -25,10 +25,11 @@ def setup_cuda():
         torch.cuda.manual_seed(seed)
     return torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def predict(in_file, img_size=480):
+def predict(in_file, img_size=480, threshold=6600):
     """
     :param in_file: image file
     :param img_size: image size
+    :param threshold: threshold value for the segment calculation
     """
     model.eval()
 
@@ -48,7 +49,7 @@ def predict(in_file, img_size=480):
 
     # Count the number of segments (connected components)
     labeled_seg_map, num_segments = label(seg_map)
-    print(f"Number of segments: {num_segments}")
+    print(f"Initial Number of segments: {num_segments}")
 
     # Calculate sizes of each segment
     segment_sizes = np.bincount(labeled_seg_map.flatten())
@@ -74,44 +75,31 @@ def predict(in_file, img_size=480):
 
     print(f"Average Size of Segments Above Overall Average: {avg_size_above_avg}")
 
+    # Calculate the weighted number of segments and round to the nearest integer
+    num_segments_weighted = round(
+        small_segments
+        + avg_segments * (avg_size / threshold)
+        + large_segments * (avg_size_above_avg / threshold)
+    )
+    print(f"Rounded Weighted Number of Segments: {num_segments_weighted}")
+
     # Create an overlay image
-    overlay_image = Image.new('RGB', (W, H), (0, 0, 0))
-    draw = ImageDraw.Draw(overlay_image)
-
-    # Assign colors based on size thresholds and draw on overlay
-    for label_val in np.unique(labeled_seg_map):
-        if label_val == 0:
-            continue  # Skip background
-        size = segment_sizes[label_val]
-        if size <= min_size:
-            color = (255, 0, 0)  # Red for small
-        elif size <= avg_size:
-            color = (0, 255, 0)  # Green for average
-        else:
-            color = (0, 0, 255)  # Blue for large
-        
-        # Draw the segments with the chosen color
-        segment_mask = (labeled_seg_map == label_val)
-        overlay_image_np = np.array(overlay_image)
-        overlay_image_np[segment_mask] = color
-        overlay_image = Image.fromarray(overlay_image_np)
-
-    # Blend the overlay image with the original image
-    blended_image = Image.blend(img, overlay_image, alpha=0.5)
+    blended_image = Image.blend(img, img, alpha=0.5)  # Placeholder for the image, no overlay needed
 
     # Add text to the blended image
     draw = ImageDraw.Draw(blended_image)
     standard_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Adjust path if necessary
-    large_font = ImageFont.truetype("/content/segatten/test/Arial.ttf", size=100)  # Larger font size for the number of segments
 
     model_text = f"Model: {cmd_args.net}"
-    segment_text = f"Số lượng tôm: {num_segments} (Nhỏ: {small_segments}, Vừa: {avg_segments}, Lớn: {large_segments})"
-    avg_above_text = f"Avg Size Above Avg: {avg_size_above_avg:.2f}"
+    segment_text = f"Số lượng tôm: {num_segments_weighted}"
+    # Overlay the segment count on the image
+    overlaid = visualize(seg_map, np.array(img))
+    overlaid = Image.fromarray(overlaid)
 
     # Get the bounding box of the model text
     model_text_bbox = draw.textbbox((0, 0), model_text, font=standard_font)
     # Get the bounding box of the segment count text
-    segment_text_bbox = draw.textbbox((0, 0), segment_text, font=large_font)
+    segment_text_bbox = draw.textbbox((0, 0), segment_text, font=standard_font)
 
     # Calculate text width and height
     model_text_width = model_text_bbox[2] - model_text_bbox[0]
@@ -124,12 +112,11 @@ def predict(in_file, img_size=480):
     segment_text_position = (W - segment_text_width - 10, H - segment_text_height - 10)
 
     draw.text(model_text_position, model_text, fill=(255, 255, 255), font=standard_font)
-    draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=large_font)
-    draw.text((10, 10), avg_above_text, fill=(255, 255, 255), font=standard_font)
+    draw.text(segment_text_position, segment_text, fill=(255, 255, 255), font=standard_font)
 
     # Save the final blended image
     blended_image.save(cmd_args.output + os.sep + os.path.basename(in_file))
-    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments}')
+    print(f'File: {os.path.basename(in_file)} done. Số lượng tôm: {num_segments_weighted}')
 
     return seg_map  # Return the segmentation map for metric calculation
 
