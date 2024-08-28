@@ -20,7 +20,7 @@ class SELayer(nn.Module):
         return x * y.expand_as(x)
 
 class DeepLabV3SE(nn.Module):
-    def __init__(self, num_classes=21):
+    def __init__(self, num_classes=2):
         super(DeepLabV3SE, self).__init__()
         self.deeplabv3 = deeplabv3_resnet50(pretrained=True)
         self.se1 = SELayer(64, 16)
